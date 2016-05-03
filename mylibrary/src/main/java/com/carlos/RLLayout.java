@@ -28,7 +28,7 @@ public class RLLayout extends RelativeLayout {
     //ACTION_DOWN时候的Y坐标
     private int touchStart = 0;
     //listView的回弹速度
-    private int speedBackToPlace = 15;
+    private int speedBackToPlace = 10;
     //头部下拉刷新的view动画
     private View headerView = null;
     private IHeaderView iHeaderView;
@@ -162,10 +162,26 @@ public class RLLayout extends RelativeLayout {
             case MotionEvent.ACTION_MOVE:
                 if (isScrollToTop) {
                     if (y < touchStart) return;
-                    translateListView((y - touchStart) / 4);
+                    if (headerView != null) {
+                        if ((y - touchStart) / 2 < headerView.getHeight() * 3 / 2) {
+                            translateListView((y - touchStart) / 2);
+                        } else {
+                            translateListView(headerView.getHeight() * 3 / 2);
+                        }
+                        return;
+                    }
+                    translateListView((y - touchStart) / 2);
                 } else {
                     if (y > touchStart) return;
-                    translateListView((y - touchStart) / 4);
+                    if (footerView != null) {
+                        if ((y - touchStart) / 2 > -footerView.getHeight() * 3 / 2) {
+                            translateListView((y - touchStart) / 2);
+                        } else {
+                            translateListView(-footerView.getHeight() * 3 / 2);
+                        }
+                        return;
+                    }
+                    translateListView((y - touchStart) / 2);
                 }
                 break;
         }
@@ -177,6 +193,7 @@ public class RLLayout extends RelativeLayout {
      * @param translateY 位移的距离
      */
     private void translateListView(int translateY) {
+        System.out.println("位移的量" + translateY);
         absListView.setTranslationY(translateY);
         if (headerView != null)
             headerView.setTranslationY(translateY);

@@ -3,12 +3,12 @@ package com.carlos.rllayout;
 import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.TextView;
 
 import com.carlos.IHeaderView;
+import com.carlos.RLLayout;
 
 /**
  * Created by carlos on 16/5/1.
@@ -19,7 +19,13 @@ public class RLHeaderView implements IHeaderView {
     private View view;
     private Animation animation;
 
-    public RLHeaderView(Context context, ViewGroup parent) {
+    /**
+     * 构造函数
+     *
+     * @param context 上下文
+     * @param parent  RLLayout的实例
+     */
+    public RLHeaderView(Context context, RLLayout parent) {
         this.context = context;
         view = LayoutInflater.from(context).inflate(R.layout.layout_rl_headview, parent, false);
     }
