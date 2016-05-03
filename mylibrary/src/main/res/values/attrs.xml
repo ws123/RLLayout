@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="rlLayout">
+        <attr name="enablePullToRefresh" format="boolean" />
+        <attr name="enableLoadMore" format="boolean" />
+    </declare-styleable>
+</resources>
