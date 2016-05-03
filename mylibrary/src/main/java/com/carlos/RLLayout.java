@@ -3,7 +3,6 @@ package com.carlos;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.os.Handler;
-import android.provider.Settings;
 import android.support.v4.view.ViewCompat;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
@@ -128,6 +127,7 @@ public class RLLayout extends RelativeLayout {
 
     @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {
+        System.out.println(ev.toString());
         return isScrollToTop || isScrollToBottom || super.onInterceptTouchEvent(ev);
     }
 
@@ -157,18 +157,15 @@ public class RLLayout extends RelativeLayout {
      * @param event 手势事件
      */
     private void filterTouchEvent(MotionEvent event) {
-        System.out.println("滑到底部了吗" + isScrollToBottom);
-        System.out.println("滑到顶部了吗" + isScrollToTop);
         int y = (int) event.getY();
-        System.out.println("上次的位置" + touchStart + "现在的位置" + y);
         switch (event.getAction()) {
             case MotionEvent.ACTION_MOVE:
                 if (isScrollToTop) {
                     if (y < touchStart) return;
-                    translateListView((y - touchStart) / 3);
+                    translateListView((y - touchStart) / 4);
                 } else {
                     if (y > touchStart) return;
-                    translateListView((y - touchStart) / 3);
+                    translateListView((y - touchStart) / 4);
                 }
                 break;
         }
@@ -193,7 +190,7 @@ public class RLLayout extends RelativeLayout {
      * 判断并调用headerview的临界值方法
      */
     private void filterHeaderViewThreshold() {
-        if (headerView == null || !isPullToRefresh) return;
+        if (headerView == null || !isPullToRefresh || !isScrollToTop) return;
         if (!isPassThreshold && absListView.getTranslationY() >= headerView.getHeight()) {
             iHeaderView.passThreshold(headerView, headerView.getHeight());
             isPassThreshold = true;
@@ -201,19 +198,25 @@ public class RLLayout extends RelativeLayout {
             iHeaderView.backToThreshold(headerView, headerView.getHeight());
             isPassThreshold = false;
         }
+        if (absListView.getTranslationY() <= headerView.getHeight()) {
+            iHeaderView.pullingDown(headerView, (int) absListView.getTranslationY());
+        }
     }
 
     /**
      * 判断并调用footerview的临界值方法
      */
     private void filterFooterViewThreshold() {
-        if (footerView == null && !isLoadMore) return;
+        if (footerView == null || !isLoadMore || !isScrollToBottom) return;
         if (!isFooterPassThreshold && absListView.getTranslationY() <= -footerView.getHeight()) {
             iFooterView.passThreshold(footerView, footerView.getHeight());
             isFooterPassThreshold = true;
         } else if (isFooterPassThreshold && absListView.getTranslationY() > -footerView.getHeight()) {
             iFooterView.backToThreshold(footerView, footerView.getHeight());
             isFooterPassThreshold = false;
+        }
+        if (absListView.getTranslationY() >= -footerView.getHeight()) {
+            iFooterView.pullingDown(footerView, Math.abs((int) absListView.getTranslationY()));
         }
     }
 
@@ -234,6 +237,9 @@ public class RLLayout extends RelativeLayout {
                     headerView.setTranslationY(0);
             }
             filterHeaderViewThreshold();
+            if (headerView != null && absListView.getTranslationY() <= headerView.getHeight()) {
+                iHeaderView.pullingDown(headerView, (int) absListView.getTranslationY());
+            }
             new Handler().postDelayed(new Runnable() {
                 @Override
                 public void run() {
@@ -252,6 +258,9 @@ public class RLLayout extends RelativeLayout {
                 if (footerView != null)
                     footerView.setTranslationY(0);
             }
+            if (footerView != null && absListView.getTranslationY() >= -footerView.getHeight()) {
+                iFooterView.pullingDown(footerView, Math.abs((int) absListView.getTranslationY()));
+            }
             filterFooterViewThreshold();
             new Handler().postDelayed(new Runnable() {
                 @Override
@@ -268,7 +277,7 @@ public class RLLayout extends RelativeLayout {
      *
      * @param isRefresh 是否是下拉刷新
      */
-    private void backToResreshOrLoad(boolean isRefresh) {
+    private void backToRefreshOrLoad(boolean isRefresh) {
         if (isRefresh) {
             if (!isPullToRefresh) return;
             if (absListView.getTranslationY() - headerView.getHeight() > speedBackToPlace) {
@@ -277,7 +286,7 @@ public class RLLayout extends RelativeLayout {
                 new Handler().postDelayed(new Runnable() {
                     @Override
                     public void run() {
-                        backToResreshOrLoad(true);
+                        backToRefreshOrLoad(true);
                     }
                 }, 10);
             } else {
@@ -296,7 +305,7 @@ public class RLLayout extends RelativeLayout {
                 new Handler().postDelayed(new Runnable() {
                     @Override
                     public void run() {
-                        backToResreshOrLoad(false);
+                        backToRefreshOrLoad(false);
                     }
                 }, 10);
             } else {
@@ -340,7 +349,7 @@ public class RLLayout extends RelativeLayout {
             //是下拉手势
             if (absListView.getTranslationY() >= headerView.getHeight()) {
                 //达到了下拉刷新的条件
-                backToResreshOrLoad(true);
+                backToRefreshOrLoad(true);
             } else {
                 backToPlace();
             }
@@ -353,7 +362,7 @@ public class RLLayout extends RelativeLayout {
             }
             if (absListView.getTranslationY() <= -footerView.getHeight()) {
                 //达到了上拉加载的条件
-                backToResreshOrLoad(false);
+                backToRefreshOrLoad(false);
             } else {
                 backToPlace();
             }
