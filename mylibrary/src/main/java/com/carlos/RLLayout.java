@@ -29,8 +29,10 @@ public class RLLayout extends RelativeLayout {
     //上拉加载的View动画
     private View footerView = null;
     private IFooterView iFooterView;
-    //是否超过了临界值
+    //headerView是否超过了临界值
     private boolean isPassThreshold = false;
+    //footerView是否超过了临界值
+    private boolean isFooterPassThreshold = false;
     //刷新的监听器
     private RefreshListener refreshListener;
     //是否正在刷新
@@ -183,12 +185,12 @@ public class RLLayout extends RelativeLayout {
      */
     private void filterFooterViewThreshold() {
         if (footerView == null) return;
-        if (!isPassThreshold && absListView.getTranslationY() <= -footerView.getHeight()) {
+        if (!isFooterPassThreshold && absListView.getTranslationY() <= -footerView.getHeight()) {
             iFooterView.passThreshold(footerView, footerView.getHeight());
-            isPassThreshold = true;
-        } else if (isPassThreshold && absListView.getTranslationY() > -footerView.getHeight()) {
+            isFooterPassThreshold = true;
+        } else if (isFooterPassThreshold && absListView.getTranslationY() > -footerView.getHeight()) {
             iFooterView.backToThreshold(footerView, footerView.getHeight());
-            isPassThreshold = false;
+            isFooterPassThreshold = false;
         }
     }
 

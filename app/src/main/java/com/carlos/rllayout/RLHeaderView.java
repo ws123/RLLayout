@@ -9,7 +9,6 @@ import android.view.animation.AnimationUtils;
 import android.widget.TextView;
 
 import com.carlos.IHeaderView;
-import com.carlos.rllayout.mylibrary.R;
 
 /**
  * Created by carlos on 16/5/1.
@@ -39,12 +38,14 @@ public class RLHeaderView implements IHeaderView {
     public void passThreshold(View view, int threshold) {
         view.findViewById(R.id.firstImage).setRotation(180);
         ((TextView) view.findViewById(R.id.textView)).setText("松开即可刷新");
+        System.out.println("超过了临界值");
     }
 
     @Override
     public void backToThreshold(View view, int threshold) {
         view.findViewById(R.id.firstImage).setRotation(0);
         ((TextView) view.findViewById(R.id.textView)).setText("下拉刷新");
+        System.out.println("这里回到了临界值以下");
     }
 
     @Override

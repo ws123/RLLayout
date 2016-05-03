@@ -36,33 +36,33 @@ public class RLFooterView implements IFooterView {
 
     @Override
     public void passThreshold(View view, int threshold) {
-        view.findViewById(com.carlos.rllayout.mylibrary.R.id.firstImage).setRotation(180);
-        ((TextView) view.findViewById(com.carlos.rllayout.mylibrary.R.id.textView)).setText("松开即可刷新");
+        view.findViewById(R.id.firstImage).setRotation(180);
+        ((TextView) view.findViewById(R.id.textView)).setText("松开即可刷新");
     }
 
     @Override
     public void backToThreshold(View view, int threshold) {
-        view.findViewById(com.carlos.rllayout.mylibrary.R.id.firstImage).setRotation(0);
-        ((TextView) view.findViewById(com.carlos.rllayout.mylibrary.R.id.textView)).setText("下拉刷新");
+        view.findViewById(R.id.firstImage).setRotation(0);
+        ((TextView) view.findViewById(R.id.textView)).setText("下拉刷新");
     }
 
     @Override
     public void fingerUp(View view) {
         //开始刷新中的动画
-        view.findViewById(com.carlos.rllayout.mylibrary.R.id.firstImage).setVisibility(View.GONE);
-        view.findViewById(com.carlos.rllayout.mylibrary.R.id.secondImage).setVisibility(View.VISIBLE);
+        view.findViewById(R.id.firstImage).setVisibility(View.GONE);
+        view.findViewById(R.id.secondImage).setVisibility(View.VISIBLE);
         if (animation == null) {
-            animation = AnimationUtils.loadAnimation(context, com.carlos.rllayout.mylibrary.R.anim.rotate_anim);
+            animation = AnimationUtils.loadAnimation(context, R.anim.rotate_anim);
         }
-        view.findViewById(com.carlos.rllayout.mylibrary.R.id.secondImage).startAnimation(animation);
-        ((TextView) view.findViewById(com.carlos.rllayout.mylibrary.R.id.textView)).setText("正在刷新数据");
+        view.findViewById(R.id.secondImage).startAnimation(animation);
+        ((TextView) view.findViewById(R.id.textView)).setText("正在刷新数据");
     }
 
     @Override
     public void stopLoadMore(View view) {
         //恢复headView
-        view.findViewById(com.carlos.rllayout.mylibrary.R.id.secondImage).clearAnimation();
-        view.findViewById(com.carlos.rllayout.mylibrary.R.id.firstImage).setVisibility(View.VISIBLE);
-        view.findViewById(com.carlos.rllayout.mylibrary.R.id.secondImage).setVisibility(View.GONE);
+        view.findViewById(R.id.secondImage).clearAnimation();
+        view.findViewById(R.id.firstImage).setVisibility(View.VISIBLE);
+        view.findViewById(R.id.secondImage).setVisibility(View.GONE);
     }
 }
