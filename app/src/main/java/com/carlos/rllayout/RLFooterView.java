@@ -21,7 +21,7 @@ public class RLFooterView implements IFooterView {
 
     public RLFooterView(Context context, ViewGroup viewGroup) {
         this.context = context;
-        view = LayoutInflater.from(context).inflate(R.layout.layout_rl_headview, viewGroup, false);
+        view = LayoutInflater.from(context).inflate(R.layout.layout_rl_footview, viewGroup, false);
     }
 
     @Override
@@ -43,7 +43,7 @@ public class RLFooterView implements IFooterView {
     @Override
     public void backToThreshold(View view, int threshold) {
         view.findViewById(R.id.firstImage).setRotation(0);
-        ((TextView) view.findViewById(R.id.textView)).setText("下拉刷新");
+        ((TextView) view.findViewById(R.id.textView)).setText("上拉刷新");
     }
 
     @Override
