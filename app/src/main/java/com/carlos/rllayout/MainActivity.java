@@ -25,6 +25,7 @@ public class MainActivity extends AppCompatActivity implements RLLayout.RefreshL
         rlLayout.setiHeaderView(new AnimHeaderView(this, rlLayout));
         rlLayout.setiFooterView(new RLFooterView(this, rlLayout));
         rlLayout.setRefreshListener(this);
+        //hello
     }
 
     @Override
