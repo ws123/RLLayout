@@ -1,6 +1,7 @@
 package com.carlos;
 
 import android.content.Context;
+import android.content.res.TypedArray;
 import android.os.Handler;
 import android.support.v4.view.ViewCompat;
 import android.util.AttributeSet;
@@ -9,32 +10,43 @@ import android.view.View;
 import android.widget.AbsListView;
 import android.widget.RelativeLayout;
 
+import com.carlos.rllayout.mylibrary.R;
+
 /**
  * Created by carlos on 16/4/30.
  * 一个可以下拉刷新上拉加载的布局,直接把ListView放在布局中就可以了
  */
 public class RLLayout extends RelativeLayout {
+    //布局中的AbsListView
     private AbsListView absListView;
-
-    private boolean isScrollToTop;
-    private boolean isScrollToBottom;
+    //是否滚动到了顶部
+    private boolean isScrollToTop = false;
+    //是否滚动到了底部
+    private boolean isScrollToBottom = false;
+    //上次手势的Y轴坐标
     private int lastTouchY;
-
+    //ACTION_DOWN时候的Y坐标
     private int touchStart = 0;
     //listView的回弹速度
-    private int speedBackToPlace = 15;
+    private int speedBackToPlace = 10;
     //头部下拉刷新的view动画
     private View headerView = null;
     private IHeaderView iHeaderView;
     //上拉加载的View动画
     private View footerView = null;
     private IFooterView iFooterView;
-    //是否超过了临界值
+    //headerView是否超过了临界值
     private boolean isPassThreshold = false;
+    //footerView是否超过了临界值
+    private boolean isFooterPassThreshold = false;
     //刷新的监听器
     private RefreshListener refreshListener;
     //是否正在刷新
     private boolean isRefreshOrLoadMore = false;
+    //是否开启下拉刷新功能
+    private boolean isPullToRefresh = false;
+    //是否开启上拉加载功能
+    private boolean isLoadMore = false;
 
 
     public RLLayout(Context context) {
@@ -43,10 +55,19 @@ public class RLLayout extends RelativeLayout {
 
     public RLLayout(Context context, AttributeSet attrs) {
         super(context, attrs);
+        initProperty(context, attrs);
     }
 
     public RLLayout(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
+        initProperty(context, attrs);
+    }
+
+    private void initProperty(Context context, AttributeSet attributeSet) {
+        TypedArray typedArray = context.obtainStyledAttributes(attributeSet, R.styleable.rlLayout);
+        isPullToRefresh = typedArray.getBoolean(R.styleable.rlLayout_enablePullToRefresh, false);
+        isLoadMore = typedArray.getBoolean(R.styleable.rlLayout_enableLoadMore, false);
+        typedArray.recycle();
     }
 
     @Override
@@ -58,38 +79,32 @@ public class RLLayout extends RelativeLayout {
         if (footerView != null) {
             footerView.layout(0, getHeight(), getWidth(), getHeight() + footerView.getHeight());
         }
+        initAbsListView();
     }
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
-        if (isRefreshOrLoadMore) return super.dispatchTouchEvent(ev);
+        if (isRefreshOrLoadMore || (!isPullToRefresh && !isLoadMore) || absListView == null) {
+            return super.dispatchTouchEvent(ev);
+        }
         int touchY = (int) ev.getY();
         switch (ev.getAction()) {
             case MotionEvent.ACTION_DOWN:
+                zeroTemporaryData();
                 touchStart = touchY;
                 lastTouchY = touchY;
                 break;
             case MotionEvent.ACTION_MOVE:
                 if (lastTouchY != 0) {
                     if (touchY > lastTouchY) {
+                        if (!isPullToRefresh) return super.dispatchTouchEvent(ev);
                         //在往下滑
-                        if (absListView == null) {
-                            if (getChildCount() > 3 || !(getChildAt(0) instanceof AbsListView)) {
-                                throw new RLException("布局里面只能有一个AbsListView");
-                            }
-                            absListView = (AbsListView) getChildAt(0);
-                        }
                         if (!ViewCompat.canScrollVertically(absListView, -1)) {
                             isScrollToTop = true;
                         }
                     } else {
+                        if (!isLoadMore) return super.dispatchTouchEvent(ev);
                         //在往上滑
-                        if (absListView == null) {
-                            if (getChildCount() > 3 || !(getChildAt(0) instanceof AbsListView)) {
-                                throw new RLException("布局里面只能有一个AbsListView");
-                            }
-                            absListView = (AbsListView) getChildAt(0);
-                        }
                         if (!ViewCompat.canScrollVertically(absListView, 1)) {
                             isScrollToBottom = true;
                         }
@@ -98,17 +113,11 @@ public class RLLayout extends RelativeLayout {
                 lastTouchY = touchY;
                 break;
             case MotionEvent.ACTION_UP:
-                lastTouchY = 0;
-                isScrollToBottom = false;
-                isScrollToTop = false;
-                touchStart = 0;
+                zeroTemporaryData();
                 filterActionUp(false);
                 break;
             case MotionEvent.ACTION_CANCEL:
-                lastTouchY = 0;
-                isScrollToBottom = false;
-                isScrollToTop = false;
-                touchStart = 0;
+                zeroTemporaryData();
                 filterActionUp(true);
                 break;
         }
@@ -118,6 +127,7 @@ public class RLLayout extends RelativeLayout {
 
     @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {
+        System.out.println(ev.toString());
         return isScrollToTop || isScrollToBottom || super.onInterceptTouchEvent(ev);
     }
 
@@ -132,6 +142,16 @@ public class RLLayout extends RelativeLayout {
     }
 
     /**
+     * 清空触摸临时数据
+     */
+    private void zeroTemporaryData() {
+        lastTouchY = 0;
+        isScrollToBottom = false;
+        isScrollToTop = false;
+        touchStart = 0;
+    }
+
+    /**
      * 对手势过一下过滤处理,对于手势的判断逻辑在这里
      *
      * @param event 手势事件
@@ -141,9 +161,27 @@ public class RLLayout extends RelativeLayout {
         switch (event.getAction()) {
             case MotionEvent.ACTION_MOVE:
                 if (isScrollToTop) {
-                    translateListView((y - touchStart) / 3);
+                    if (y < touchStart) return;
+                    if (headerView != null) {
+                        if ((y - touchStart) / 2 < headerView.getHeight() * 3 / 2) {
+                            translateListView((y - touchStart) / 2);
+                        } else {
+                            translateListView(headerView.getHeight() * 3 / 2);
+                        }
+                        return;
+                    }
+                    translateListView((y - touchStart) / 2);
                 } else {
-                    translateListView((y - touchStart) / 3);
+                    if (y > touchStart) return;
+                    if (footerView != null) {
+                        if ((y - touchStart) / 2 > -footerView.getHeight() * 3 / 2) {
+                            translateListView((y - touchStart) / 2);
+                        } else {
+                            translateListView(-footerView.getHeight() * 3 / 2);
+                        }
+                        return;
+                    }
+                    translateListView((y - touchStart) / 2);
                 }
                 break;
         }
@@ -155,6 +193,7 @@ public class RLLayout extends RelativeLayout {
      * @param translateY 位移的距离
      */
     private void translateListView(int translateY) {
+        System.out.println("位移的量" + translateY);
         absListView.setTranslationY(translateY);
         if (headerView != null)
             headerView.setTranslationY(translateY);
@@ -168,7 +207,7 @@ public class RLLayout extends RelativeLayout {
      * 判断并调用headerview的临界值方法
      */
     private void filterHeaderViewThreshold() {
-        if (headerView == null) return;
+        if (headerView == null || !isPullToRefresh || !isScrollToTop) return;
         if (!isPassThreshold && absListView.getTranslationY() >= headerView.getHeight()) {
             iHeaderView.passThreshold(headerView, headerView.getHeight());
             isPassThreshold = true;
@@ -176,19 +215,25 @@ public class RLLayout extends RelativeLayout {
             iHeaderView.backToThreshold(headerView, headerView.getHeight());
             isPassThreshold = false;
         }
+        if (absListView.getTranslationY() <= headerView.getHeight()) {
+            iHeaderView.pullingDown(headerView, (int) absListView.getTranslationY());
+        }
     }
 
     /**
      * 判断并调用footerview的临界值方法
      */
     private void filterFooterViewThreshold() {
-        if (footerView == null) return;
-        if (!isPassThreshold && absListView.getTranslationY() <= -footerView.getHeight()) {
+        if (footerView == null || !isLoadMore || !isScrollToBottom) return;
+        if (!isFooterPassThreshold && absListView.getTranslationY() <= -footerView.getHeight()) {
             iFooterView.passThreshold(footerView, footerView.getHeight());
-            isPassThreshold = true;
-        } else if (isPassThreshold && absListView.getTranslationY() > -footerView.getHeight()) {
+            isFooterPassThreshold = true;
+        } else if (isFooterPassThreshold && absListView.getTranslationY() > -footerView.getHeight()) {
             iFooterView.backToThreshold(footerView, footerView.getHeight());
-            isPassThreshold = false;
+            isFooterPassThreshold = false;
+        }
+        if (absListView.getTranslationY() >= -footerView.getHeight()) {
+            iFooterView.pullingDown(footerView, Math.abs((int) absListView.getTranslationY()));
         }
     }
 
@@ -196,18 +241,22 @@ public class RLLayout extends RelativeLayout {
      * 让listview回弹回原来的位置
      */
     private void backToPlace() {
-        isRefreshOrLoadMore = false;
         if (absListView.getTranslationY() > 0) {
+            if (!isPullToRefresh) return;
             if (absListView.getTranslationY() > speedBackToPlace) {
                 absListView.setTranslationY(absListView.getTranslationY() - speedBackToPlace);
                 if (headerView != null)
                     headerView.setTranslationY(absListView.getTranslationY() - speedBackToPlace);
             } else {
                 absListView.setTranslationY(0);
+                isRefreshOrLoadMore = false;
                 if (headerView != null)
                     headerView.setTranslationY(0);
             }
             filterHeaderViewThreshold();
+            if (headerView != null && absListView.getTranslationY() <= headerView.getHeight()) {
+                iHeaderView.pullingDown(headerView, (int) absListView.getTranslationY());
+            }
             new Handler().postDelayed(new Runnable() {
                 @Override
                 public void run() {
@@ -215,14 +264,19 @@ public class RLLayout extends RelativeLayout {
                 }
             }, 10);
         } else if (absListView.getTranslationY() < 0) {
+            if (!isLoadMore) return;
             if (absListView.getTranslationY() + speedBackToPlace < 0) {
                 absListView.setTranslationY(absListView.getTranslationY() + speedBackToPlace);
                 if (footerView != null)
                     footerView.setTranslationY(absListView.getTranslationY() + speedBackToPlace);
             } else {
+                isRefreshOrLoadMore = false;
                 absListView.setTranslationY(0);
                 if (footerView != null)
                     footerView.setTranslationY(0);
+            }
+            if (footerView != null && absListView.getTranslationY() >= -footerView.getHeight()) {
+                iFooterView.pullingDown(footerView, Math.abs((int) absListView.getTranslationY()));
             }
             filterFooterViewThreshold();
             new Handler().postDelayed(new Runnable() {
@@ -240,15 +294,16 @@ public class RLLayout extends RelativeLayout {
      *
      * @param isRefresh 是否是下拉刷新
      */
-    private void backToResreshOrLoad(boolean isRefresh) {
+    private void backToRefreshOrLoad(boolean isRefresh) {
         if (isRefresh) {
+            if (!isPullToRefresh) return;
             if (absListView.getTranslationY() - headerView.getHeight() > speedBackToPlace) {
                 absListView.setTranslationY(absListView.getTranslationY() - speedBackToPlace);
                 headerView.setTranslationY(absListView.getTranslationY() - speedBackToPlace);
                 new Handler().postDelayed(new Runnable() {
                     @Override
                     public void run() {
-                        backToResreshOrLoad(true);
+                        backToRefreshOrLoad(true);
                     }
                 }, 10);
             } else {
@@ -260,13 +315,14 @@ public class RLLayout extends RelativeLayout {
                 isRefreshOrLoadMore = true;
             }
         } else {
+            if (!isLoadMore) return;
             if (Math.abs(absListView.getTranslationY() + footerView.getHeight()) > speedBackToPlace) {
                 absListView.setTranslationY(absListView.getTranslationY() + speedBackToPlace);
                 footerView.setTranslationY(absListView.getTranslationY() + speedBackToPlace);
                 new Handler().postDelayed(new Runnable() {
                     @Override
                     public void run() {
-                        backToResreshOrLoad(false);
+                        backToRefreshOrLoad(false);
                     }
                 }, 10);
             } else {
@@ -276,6 +332,18 @@ public class RLLayout extends RelativeLayout {
                 if (refreshListener != null) refreshListener.startLoadMore();
                 isRefreshOrLoadMore = true;
             }
+        }
+    }
+
+    /**
+     * 初使化AbsListView
+     */
+    private void initAbsListView() {
+        if (absListView == null) {
+            if (getChildCount() > 3 || !(getChildAt(0) instanceof AbsListView)) {
+                throw new RLException("布局里面只能有一个AbsListView");
+            }
+            absListView = (AbsListView) getChildAt(0);
         }
     }
 
@@ -290,6 +358,7 @@ public class RLLayout extends RelativeLayout {
             return;
         }
         if (absListView.getTranslationY() > 0) {
+            if (!isPullToRefresh) return;
             if (headerView == null) {
                 backToPlace();
                 return;
@@ -297,11 +366,12 @@ public class RLLayout extends RelativeLayout {
             //是下拉手势
             if (absListView.getTranslationY() >= headerView.getHeight()) {
                 //达到了下拉刷新的条件
-                backToResreshOrLoad(true);
+                backToRefreshOrLoad(true);
             } else {
                 backToPlace();
             }
         } else if (absListView.getTranslationY() < 0) {
+            if (!isLoadMore) return;
             //是上拉手势
             if (footerView == null) {
                 backToPlace();
@@ -309,7 +379,7 @@ public class RLLayout extends RelativeLayout {
             }
             if (absListView.getTranslationY() <= -footerView.getHeight()) {
                 //达到了上拉加载的条件
-                backToResreshOrLoad(false);
+                backToRefreshOrLoad(false);
             } else {
                 backToPlace();
             }
@@ -340,6 +410,7 @@ public class RLLayout extends RelativeLayout {
     public void setiHeaderView(IHeaderView iHeaderView) {
         if (iHeaderView == null)
             throw new RLException("iHeaderView can not be null");
+        if (!isPullToRefresh) return;
         this.iHeaderView = iHeaderView;
         headerView = iHeaderView.initHeaderView();
         this.addView(this.headerView);
@@ -359,9 +430,24 @@ public class RLLayout extends RelativeLayout {
         if (iFooterView == null) {
             throw new RLException("iFooterView can not be null");
         }
+        if (!isLoadMore) return;
         this.iFooterView = iFooterView;
         footerView = iFooterView.initFooterView();
         this.addView(footerView);
+    }
+
+    /**
+     * @param pullToRefresh 设置是否允许下拉刷新
+     */
+    public void setPullToRefresh(boolean pullToRefresh) {
+        isPullToRefresh = pullToRefresh;
+    }
+
+    /**
+     * @param loadMore 设置是否允许上拉加载更多
+     */
+    public void setLoadMore(boolean loadMore) {
+        isLoadMore = loadMore;
     }
 
     public interface RefreshListener {

@@ -19,7 +19,6 @@ public interface IFooterView {
      * 在上拉过程中,这个方法会被多次调用
      * 可以根据偏移量的大小,在这里做一些动画,比如偏移量越大,箭头越来越大,颜色越来越重等等
      * 如果上拉超过临界后,会调用passThreshold()方法
-     * <p/>
      * 临界值为自己定义的footerView的高度
      *
      * @param translateY 上拉的偏移量

@@ -22,7 +22,7 @@ public class MainActivity extends AppCompatActivity implements RLLayout.RefreshL
         listView = (ListView) findViewById(R.id.listView);
         rlLayout = (RLLayout) findViewById(R.id.rlLayout);
         listView.setAdapter(new MyAdapter());
-        rlLayout.setiHeaderView(new RLHeaderView(this, rlLayout));
+        rlLayout.setiHeaderView(new AnimHeaderView(this, rlLayout));
         rlLayout.setiFooterView(new RLFooterView(this, rlLayout));
         rlLayout.setRefreshListener(this);
     }
